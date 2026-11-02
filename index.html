@@ -256,7 +256,7 @@
                   ⚡ <span id="headerXpDisplay">0 XP</span>
                 </button>
                 <span class="opacity-40">•</span>
-                <span id="liveDateString" class="font-medium text-[9.5px] truncate">आज</span>
+                <span id="liveHeaderDateString" class="font-medium text-[9.5px] truncate">आज</span>
               </div>
             </div>
           </div>
@@ -278,19 +278,9 @@
               ⚙️
             </button>
 
-            <!-- Language Badge -->
-            <button type="button" onclick="toggleAppLanguage()" class="h-8 px-2 rounded-xl st-subtle text-[10px] font-black text-sky-500 flex items-center justify-center active:scale-90 transition-all">
-              <span id="mobileLangLabel">EN</span>
-            </button>
-
             <!-- Theme Toggle -->
             <button type="button" onclick="toggleAppTheme()" class="w-8 h-8 rounded-xl st-subtle text-xs flex items-center justify-center text-[var(--st-text-head)] active:scale-90 transition-all" title="थीम बदलें">
               <span id="mobileThemeIcon">🌙</span>
-            </button>
-
-            <!-- Sound Toggle -->
-            <button type="button" onclick="toggleSoundFx()" id="btnMobileSound" class="w-8 h-8 rounded-xl st-subtle text-xs flex items-center justify-center active:scale-90 transition-all" title="ध्वनि">
-              🔊
             </button>
           </div>
 
@@ -564,6 +554,7 @@
           <span id="desktopTableTitle"></span>
           <span id="desktopTableSubtitle"></span>
           <span id="desktopLangLabel"></span>
+          <span id="mobileLangLabel"></span>
           <span id="desktopThemeIcon"></span>
           <span id="desktopThemeLabel"></span>
           <span id="labelBtnAdd"></span>
@@ -576,7 +567,8 @@
           <span id="tabLabelMocks"></span>
           <span id="tabLabelWarroom"></span>
           <span id="tabLabelAnalytics"></span>
-          <button id="btnDesktopSound"></button>
+          <button id="btnMobileSound" class="hidden"></button>
+          <button id="btnDesktopSound" class="hidden"></button>
           <table>
             <thead id="desktopThead"></thead>
             <tbody id="desktopTbody"></tbody>
@@ -1890,7 +1882,7 @@
       }
     });
 
-    // ================= MOBILE DAYS CAROUSEL & CARDS =================
+    // MOBILE DAYS CAROUSEL & CARDS
     function renderMobileDaysCarousel() {
       const container = document.getElementById('mobileDaysContainer');
       if (!container) return;
@@ -2087,8 +2079,7 @@
     function closeShortcutsModal() { document.getElementById('modalShortcuts').classList.add('hidden'); }
 
     function loadSavedPrefs() {
-      const savedLang = localStorage.getItem('st_lang');
-      if (savedLang && (savedLang === 'hi' || savedLang === 'en')) currentLang = savedLang;
+      currentLang = 'hi';
 
       const savedTheme = localStorage.getItem('st_theme');
       isDarkMode = (savedTheme === 'dark');
@@ -2131,36 +2122,23 @@
       }
     }
 
-    function toggleAppLanguage() {
-      currentLang = currentLang === 'hi' ? 'en' : 'hi';
-      localStorage.setItem('st_lang', currentLang);
-      playHapticPop(600, 'sine', 0.05);
-
-      updateStaticTexts();
-      applyAppTheme();
-      renderAllComponents();
-      refreshMetricsAndCharts();
-      renderMocksSection();
-      populateFocusSubjectOptions();
-    }
-
     function toggleSoundFx() {
       soundEnabled = !soundEnabled;
       localStorage.setItem('st_sound', soundEnabled);
       const icon = soundEnabled ? '🔊' : '🔇';
-      document.getElementById('btnMobileSound').textContent = icon;
+      const mbBtn = document.getElementById('btnMobileSound');
+      if (mbBtn) mbBtn.textContent = icon;
       if (soundEnabled) playHapticPop(650, 'sine', 0.08);
     }
 
     function updateStaticTexts() {
-      const t = I18N[currentLang];
-      document.getElementById('card1Title').textContent = t.card1;
-      document.getElementById('card2Title').textContent = t.card2;
-      document.getElementById('card2Note').textContent = t.card2Note;
-      document.getElementById('card3Title').textContent = t.card3;
-      document.getElementById('card3Note').textContent = t.card3Note;
-      document.getElementById('mobileSliderTitle').textContent = t.mobileSliderTitle;
-      document.getElementById('mobileLangLabel').textContent = t.langBadge;
+      const t = I18N['hi'];
+      safeText('card1Title', t.card1);
+      safeText('card2Title', t.card2);
+      safeText('card2Note', t.card2Note);
+      safeText('card3Title', t.card3);
+      safeText('card3Note', t.card3Note);
+      safeText('mobileSliderTitle', t.mobileSliderTitle);
     }
 
     function switchTab(tabId) {
@@ -4040,7 +4018,9 @@
         const mins = String(now.getMinutes()).padStart(2, '0');
         const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
         const dateStr = `${now.getDate()} ${MONTH_NAMES[currentLang][now.getMonth()]}`;
-        document.getElementById('liveDateString').textContent = `${hrs}:${mins} ${ampm} • ${dateStr}`;
+        
+        safeText('liveDateString', `${hrs}:${mins} ${ampm} • ${dateStr}`);
+        safeText('liveHeaderDateString', `${hrs}:${mins} ${ampm} • ${dateStr}`);
       }
       tick();
       setInterval(tick, 30000);
@@ -4051,7 +4031,23 @@
       if (!appState.dailySleep) appState.dailySleep = {};
       appState.dailySleep[realToday] = val;
       persistAppState();
+      updateSleepDebtDisplay(val);
       playHapticPop(500, 'sine', 0.05);
+    }
+
+    function updateSleepDebtDisplay(sleepHours) {
+      const hours = parseInt(sleepHours || '7');
+      const debt = Math.max(0, 8 - hours);
+      const el = document.getElementById('lblSleepDebt');
+      if (el) {
+        if (debt === 0) {
+          el.className = "text-emerald-500 font-bold";
+          el.textContent = "0.0h (संतुलित)";
+        } else {
+          el.className = "text-rose-500 font-bold";
+          el.textContent = `-${debt}.0h (डेब्ट)`;
+        }
+      }
     }
 
     function updateSleepDisplay() {
@@ -4059,133 +4055,13 @@
       const val = (appState.dailySleep && appState.dailySleep[realToday]) || '7';
       const sel = document.getElementById('selectSleepHours');
       if (sel) sel.value = val;
-    }
-
-    function adjustDetailedPyq(type, delta) {
-      const realToday = new Date().getDate();
-      if (!appState.dailyPyqDetail) appState.dailyPyqDetail = {};
-      if (!appState.dailyPyqDetail[realToday]) appState.dailyPyqDetail[realToday] = { correct: 0, wrong: 0 };
-      const cur = appState.dailyPyqDetail[realToday];
-      if (type === 'correct') cur.correct = Math.max(0, (cur.correct || 0) + delta);
-      persistAppState();
-      updateDetailedPyqDisplay();
-      playHapticPop(delta > 0 ? 640 : 420, 'sine', 0.05);
-    }
-
-    function updateDetailedPyqDisplay() {
-      const realToday = new Date().getDate();
-      const data = (appState.dailyPyqDetail && appState.dailyPyqDetail[realToday]) || { correct: 0, wrong: 0 };
-      document.getElementById('valPyqCorrect').textContent = data.correct || 0;
-      document.getElementById('displayTodayPyq').textContent = data.correct || 0;
-    }
-
-    function renderWarRoomView() {
-      const q1 = document.getElementById('quadrantQ1');
-      const q2 = document.getElementById('quadrantQ2');
-      const q3 = document.getElementById('quadrantQ3');
-      const q4 = document.getElementById('quadrantQ4');
-      const urgent = document.getElementById('warroomUrgentList');
-      const safe = document.getElementById('warroomSafeList');
-
-      if (!q1) return;
-      q1.innerHTML = ''; q2.innerHTML = ''; q3.innerHTML = ''; q4.innerHTML = '';
-      urgent.innerHTML = ''; safe.innerHTML = '';
-
-      const totalDays = daysInMonth(currentYear, currentMonth);
-      let totalWeighted = 0;
-
-      appState.items.forEach(it => {
-        const checks = appState.checks[it.id] || {};
-        const done = Object.values(checks).filter(Boolean).length;
-        const ratio = (done / (it.goal || 25));
-        totalWeighted += ratio;
-
-        const pill = `<div class="p-1 rounded st-glass flex justify-between"><span>${it.icon} ${it.name}</span><b>${Math.round(ratio*100)}%</b></div>`;
-        if (ratio < 0.4) {
-          q1.innerHTML += pill;
-          urgent.innerHTML += `<div class="p-2 rounded-xl st-subtle text-rose-500 font-bold flex justify-between"><span>${it.icon} ${it.name}</span><span>${Math.round(ratio*100)}%</span></div>`;
-        } else if (ratio >= 0.7) {
-          q2.innerHTML += pill;
-          safe.innerHTML += `<div class="p-2 rounded-xl st-subtle text-emerald-500 font-bold flex justify-between"><span>${it.icon} ${it.name}</span><span>${Math.round(ratio*100)}%</span></div>`;
-        } else if (ratio < 0.5) {
-          q3.innerHTML += pill;
-        } else {
-          q4.innerHTML += pill;
-        }
-      });
-
-      const avg = appState.items.length ? Math.round((totalWeighted / appState.items.length) * 100) : 0;
-      document.getElementById('warroomReadinessScore').textContent = `${avg}% Ready`;
-    }
-
-    function populateFocusSubjectOptions() {
-      const sel = document.getElementById('selectFocusSubjectLog');
-      if (!sel) return;
-      sel.innerHTML = '';
-      if (!appState.items || appState.items.length === 0) {
-        sel.innerHTML = '<option value="">कोई विषय उपलब्ध नहीं</option>';
-        return;
-      }
-      appState.items.forEach(it => {
-        const opt = document.createElement('option');
-        opt.value = it.id;
-        opt.textContent = `${it.icon || '📖'} ${it.name}`;
-        sel.appendChild(opt);
-      });
-    }
-
-    function copyDailyTelegramReport() {
-      const realToday = new Date().getDate();
-      const hours = document.getElementById('metricTodayHours').textContent;
-      const streak = document.getElementById('metricStreakDays').textContent;
-      let msg = `🎯 *Smart Study Pro Daily Report*\n👤 ${studentName}\n⏱️ Time: ${hours}\n🔥 Streak: ${streak}\nConsistent study unlocks success! 🚀`;
-      const dummy = document.createElement("textarea");
-      document.body.appendChild(dummy);
-      dummy.value = msg;
-      dummy.select();
-      document.execCommand("copy");
-      document.body.removeChild(dummy);
-      showInAppToast('📋 स्टेटस क्लिपबोर्ड पर कॉपी हुआ!');
-    }
-
-    // ================= CHAPTERS & RESOURCES =================
-    let currentManagingTopicId = null;
-    function openTopicModal(id) {
-      currentManagingTopicId = id;
-      const it = appState.items.find(x => x.id === id);
-      if (!it) return;
-
-      document.getElementById('topicModalHeading').innerHTML = `${it.icon || '📚'} ${it.name}`;
-      document.getElementById('topicModalSub').textContent = `${it.cat} • Target: ${it.goal}d`;
-      document.getElementById('inputTopicSource').value = (appState.subjectSources && appState.subjectSources[id]) || '';
-      switchTopicModalTab('chapters');
-      document.getElementById('modalTopicManager').classList.remove('hidden');
-    }
-
-    function switchTopicModalTab(tab) {
-      const vChaps = document.getElementById('viewTopicChapters');
-      const vLogs = document.getElementById('viewTopicLogs');
-      if (tab === 'chapters') {
-        vChaps.classList.remove('hidden');
-        vLogs.classList.add('hidden');
-        renderChaptersList();
-      } else {
-        vChaps.classList.add('hidden');
-        vLogs.classList.remove('hidden');
-        renderTopicLogsList();
-      }
+      updateSleepDebtDisplay(val);
     }
 
     function renderChaptersList() {
       const container = document.getElementById('topicChaptersList');
       if (!container || !currentManagingTopicId) return;
       const list = (appState.microTopics && appState.microTopics[currentManagingTopicId]) || [];
-      document.getElementById('chaptersCountLabel').textContent = `${list.length} Chapters`;
-
-      if (list.length === 0) {
-        container.innerHTML = `<div class="p-4 text-center text-xs text-[var(--st-text-muted)]">कोई अध्याय नहीं है।</div>`;
-        return;
-      }
       container.innerHTML = list.map(c => `
         <div class="flex items-center justify-between p-2 rounded-xl st-subtle text-xs">
           <label class="flex items-center gap-2 cursor-pointer ${c.done ? 'line-through opacity-60' : ''}">
